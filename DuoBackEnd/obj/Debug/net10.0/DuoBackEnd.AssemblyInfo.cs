@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DuoBackEnd")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+acdc87ad6d16bb842533154f457e7b88f20ba9af")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a254d12bc2fdc9fe1ac434bbe771ca7b8d73123b")]
 [assembly: System.Reflection.AssemblyProductAttribute("DuoBackEnd")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DuoBackEnd")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

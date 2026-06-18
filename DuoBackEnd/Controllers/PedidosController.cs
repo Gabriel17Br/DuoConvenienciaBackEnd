@@ -100,15 +100,15 @@ public async Task<IActionResult> CriarPedido([FromBody] CriarPedidoDTO dto)
     }
 }
 
-    [HttpDelete("{id}")]
-    public async Task<IActionResult> DeletarPedido(int id)
-    {
+   [HttpDelete("{id}")]
+public async Task<IActionResult> DeletarPedido(int id)
+{
     // 1. Inicia uma transação para garantir a consistência dos dados
     using var transaction = await _context.Database.BeginTransactionAsync();
 
     try
     {
-        // 2. Busca o pedido incluindo os itens relacionados
+        // 2. Busca o pedido incluindo os itens relacionados (Carregamento Adiantado / Eager Loading)
         var pedido = await _context.Pedidos
             .Include(p => p.Itens)
             .FirstOrDefaultAsync(p => p.IdPedido == id);
@@ -139,7 +139,7 @@ public async Task<IActionResult> CriarPedido([FromBody] CriarPedidoDTO dto)
         // 5. Remove o pedido
         _context.Pedidos.Remove(pedido);
 
-        // 6. Salva todas as alterações e confirma a transação
+        // 6. Salva todas as alterações no banco e confirma a transação
         await _context.SaveChangesAsync();
         await transaction.CommitAsync();
 
@@ -147,7 +147,7 @@ public async Task<IActionResult> CriarPedido([FromBody] CriarPedidoDTO dto)
     }
     catch (Exception ex)
     {
-        // Se der qualquer erro, desfaz as alterações de estoque
+        // Se der qualquer erro em qualquer etapa, desfaz o estorno e mantém o banco como estava
         await transaction.RollbackAsync();
         return StatusCode(500, new { erro = "Erro ao deletar o pedido e estornar o estoque.", detalhes = ex.Message });
     }

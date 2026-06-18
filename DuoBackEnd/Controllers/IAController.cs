@@ -28,12 +28,17 @@ public class IAController : ControllerBase
             return BadRequest(new { erro = "A pergunta não pode estar vazia." });
         }
 
-        // 1. Sua nova chave atualizada
-        var apiKey = "AQ.Ab8RN6JdfQSv7f--9oAGq44RXevSWWG5VZp0kFra7QUkZ9mf2w"; 
+        // CHAVE PROTEGIDA: Buscando com segurança do appsettings.json
+        var apiKey = _configuration["Gemini:ApiKey"]; 
+        
+        if (string.IsNullOrEmpty(apiKey))
+        {
+            return StatusCode(500, new { erro = "A chave de API do Gemini não foi configurada no servidor." });
+        }
         
         var client = _httpClientFactory.CreateClient();
 
-        // 2. Formato do Prompt padrão do Gemini
+        // Formato do Prompt padrão do Gemini
         var promptFormatado = $"Contexto: Você é um assistente virtual integrado ao sistema Duo Conveniência.\nUsuário: {dto.Pergunta}";
 
         var requestBody = new
@@ -55,7 +60,7 @@ public class IAController : ControllerBase
 
         try
         {
-            // 3. URL CORRIGIDA: Rota unificada para chaves de nova assinatura com o modelo atual padrão
+            // URL oficial unificada
             var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={apiKey}";
             
             var response = await client.PostAsync(url, content);
@@ -66,7 +71,7 @@ public class IAController : ControllerBase
                 return StatusCode((int)response.StatusCode, new { erro = "Falha na comunicação com o Gemini.", detalhes = erroDetalhes });
             }
 
-            // 4. Extração do JSON de resposta do Google
+            // Extração do JSON de resposta do Google
             var responseString = await response.Content.ReadAsStringAsync();
             using var doc = JsonDocument.Parse(responseString);
             
