@@ -18,5 +18,9 @@ namespace DuoBackEnd.Models
         public decimal ValorTotal {get;set;}
         [Column("id_usuario")]
         public int IdUsuario {get;set;}
+
+        // 🔴 ADICIONE ESSA LINHA AQUI EMBAIXO:
+        // Ela faz o C# entender o "p.Itens" dentro do seu Include
+        public virtual ICollection<Itens> Itens { get; set; } = new List<Itens>();
     }
 }

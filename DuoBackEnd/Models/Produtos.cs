@@ -16,7 +16,7 @@ namespace DuoBackEnd.Models
         public string NomeProduto {get;set;} = string.Empty;
         [Column("preco")]
         public decimal Preco {get;set;}
-        [Column("quantidade")]
-        public int Quantidade {get;set;}
+        [Column("quantidade_estoque")]
+        public int QuantidadeEstoque {get;set;}
     }
 }

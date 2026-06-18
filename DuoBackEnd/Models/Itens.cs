@@ -21,4 +21,6 @@ public class Itens
 
     [Column("id_pedido")]
     public int IdPedido { get; set; }
+    [Column("id_produto")]
+    public int IdProduto { get; set; }
 }
