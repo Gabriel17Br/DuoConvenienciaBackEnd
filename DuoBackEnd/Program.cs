@@ -2,11 +2,14 @@ using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Ativa o suporte para Controllers (para ler a pasta Controllers)
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+// --- 1. CONFIGURAÇÃO DE SERVIÇOS (Tudo antes do Build) ---
 
-// 2. Configura o CORS (permite que seu HTML acesse essa API)
+// Ativa o suporte para Controllers
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+// Configura o CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("PermitirTudo", policy =>
@@ -15,22 +18,16 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Configuração do Banco de Dados (DbContext)
+var connectionString = builder.Configuration.GetConnectionString("AppDbConnectionString");
+var serverVersion = ServerVersion.AutoDetect(connectionString);
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseMySql(connectionString, serverVersion));
+
+// --- 2. CONSTRUÇÃO DA APLICAÇÃO ---
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-}
-
-app.UseHttpsRedirection();
-
-// Ativa a regra de acesso do CORS
-app.UseCors("PermitirTudo");
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-var app = builder.Build();
+// --- 3. CONFIGURAÇÃO DO PIPELINE (Tudo após o Build) ---
 
 if (app.Environment.IsDevelopment())
 {
@@ -39,20 +36,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
+app.UseCors("PermitirTudo");
 app.UseAuthorization();
 
-// 3. Mapeia as rotas dos seus controllers automaticamente
+// Mapeia as rotas dos seus controllers
 app.MapControllers();
 
 app.Run();
-
-// 1. Recupera a string de conexão usando o nome exato que você definiu no JSON
-var connectionString = builder.Configuration.GetConnectionString("AppDbConnectionString");
-
-// 2. Detecta automaticamente a versão do seu servidor MySQL
-var serverVersion = ServerVersion.AutoDetect(connectionString);
-
-// 3. Registra o DbContext na API
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseMySql(connectionString, serverVersion));

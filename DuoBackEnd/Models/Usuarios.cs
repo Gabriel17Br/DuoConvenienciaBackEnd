@@ -13,12 +13,12 @@ namespace DuoBackEnd.Models
         [Column("id_usuario")]
         public int IdUsuario { get; set; }
         [Column("nome")]
-        public string Nome {get;set;}
+        public string Nome {get;set;} = string.Empty;
         [Column("email")]
-        public string Email {get;set;}
+        public string Email {get;set;} = string.Empty;
         [Column("telefone")]
-        public string Telefone {get;set;}
+        public string Telefone {get;set;} = string.Empty;
         [Column("senha")]
-        public string Senha {get;set;}
+        public string Senha {get;set;} = string.Empty;
     }
 }

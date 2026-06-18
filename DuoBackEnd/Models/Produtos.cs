@@ -13,7 +13,7 @@ namespace DuoBackEnd.Models
         [Column("id_produto")]
         public int IdProduto {get;set;}
         [Column("nome_produto")]
-        public string NomeProduto {get;set;}
+        public string NomeProduto {get;set;} = string.Empty;
         [Column("preco")]
         public decimal Preco {get;set;}
         [Column("quantidade")]

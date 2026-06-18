@@ -29,6 +29,7 @@ namespace DuoBackEnd.Controllers
             Usuarios usuario = new Usuarios
             {
                 Nome = newUsuario.Nome,
+                Telefone = newUsuario.Telefone,
                 Email = newUsuario.Email,
                 Senha = newUsuario.Senha // Dica futura: aplicar hash aqui depois!
             };
@@ -86,6 +87,13 @@ namespace DuoBackEnd.Controllers
                 token = tokenString,
                 usuario = UsuarioExist.Nome ?? string.Empty,
             });
+        }
+
+        [HttpPost("logout")]
+        public ActionResult Logout()
+        {
+            // Não busca nada no banco. O Front-end chama essa rota e limpa o Token localmente.
+            return Ok(new { mensagem = "Logout efetuado. Por favor, remova o token do cliente." });
         }
     }
 }
