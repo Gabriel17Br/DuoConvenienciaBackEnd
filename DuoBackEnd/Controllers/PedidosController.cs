@@ -19,65 +19,137 @@ public class PedidosController : ControllerBase
         _context = context;
     }
 
-    [HttpPost]
-    public async Task<IActionResult> CriarPedido([FromBody] CriarPedidoDTO dto)
+     [HttpGet("ListarPedidos")]
+     public async Task<ActionResult<IEnumerable<Pedidos>>> ListarPedido()
     {
-        // Validação inicial
-        if (dto == null || dto.Itens == null)
-        {
-            return BadRequest(new { erro = "O usuário e pelo menos um item são obrigatórios." });
-        }
+        var pedidos = await _context.Pedidos.ToListAsync();
+        return Ok(pedidos);
+    }
 
-        using var transaction = await _context.Database.BeginTransactionAsync();
+   [HttpPost]
+public async Task<IActionResult> CriarPedido([FromBody] CriarPedidoDTO dto)
+{
+    if (dto == null || dto.Itens == null || !dto.Itens.Any())
+    {
+        return BadRequest(new { erro = "O usuário e pelo menos um item são obrigatórios." });
+    }
 
-        try
+    using var transaction = await _context.Database.BeginTransactionAsync();
+
+    try
+    {
+        decimal valorTotal = 0;
+
+        // 1. Cria o Pedido base
+        var novoPedido = new Pedidos
         {
-            // 1. Calcula o valor total usando a lista do DTO correto
-            decimal valorTotal = 0;
-            foreach (var item in dto.Itens)
+            DtPedido = DateTime.Now,
+            IdUsuario = dto.IdUsuario,
+            ValorTotal = 0 // Calculado abaixo
+        };
+
+        _context.Pedidos.Add(novoPedido);
+        await _context.SaveChangesAsync(); 
+
+        // 2. Processa os itens: Valida estoque e subtrai
+        foreach (var itemDTO in dto.Itens)
+        {
+            // Busca o produto no estoque (Produtos)
+            var produtoNoEstoque = await _context.Produtos
+                .FirstOrDefaultAsync(p => p.IdProduto == itemDTO.IdProduto);
+
+            if (produtoNoEstoque == null)
             {
-                valorTotal += item.Quantidade * item.PrecoUnitario;
+                throw new Exception($"Produto {itemDTO.NomeItem} não encontrado no estoque.");
             }
 
-            // 2. Cria e preenche a entidade Pedidos
-            var novoPedido = new Pedidos
+            if (produtoNoEstoque.QuantidadeEstoque < itemDTO.Quantidade)
             {
-                DtPedido = DateTime.Now,
-                ValorTotal = valorTotal,
-                IdUsuario = dto.IdUsuario
+                throw new Exception($"Estoque insuficiente para o produto: {produtoNoEstoque.NomeProduto}.");
+            }
+
+            // Subtrai do estoque (Produtos)
+            produtoNoEstoque.QuantidadeEstoque -= itemDTO.Quantidade;
+            _context.Produtos.Update(produtoNoEstoque);
+
+            // Adiciona ao carrinho (Itens)
+            var novoItem = new Itens
+            {
+                NomeItem = itemDTO.NomeItem,
+                Quantidade = itemDTO.Quantidade,
+                PrecoUnitario = itemDTO.PrecoUnitario,
+                IdPedido = novoPedido.IdPedido,
+                IdProduto = itemDTO.IdProduto // Importante para ligar com o estoque
             };
 
-            _context.Pedidos.Add(novoPedido);
-            await _context.SaveChangesAsync(); // Salva para gerar o id_pedido
-
-            // 3. Varre a lista vinda do DTO (Corrigido para dto.Itens)
-            foreach (var itemDTO in dto.Itens)
-            {
-                var novoItem = new Itens
-                {
-                    NomeItem = itemDTO.NomeItem,
-                    Quantidade = itemDTO.Quantidade,
-                    PrecoUnitario = itemDTO.PrecoUnitario, // Agora vai bater com o Model ajustado
-                    IdPedido = novoPedido.IdPedido 
-                };
-
-                _context.Itens.Add(novoItem);
-            }
-
-            await _context.SaveChangesAsync();
-            await transaction.CommitAsync();
-
-            return StatusCode(201, new
-            {
-                mensagem = "Pedido criado com sucesso!",
-                id_pedido = novoPedido.IdPedido,
-                valor_total = novoPedido.ValorTotal
-            });
+            valorTotal += (itemDTO.Quantidade * itemDTO.PrecoUnitario);
+            _context.Itens.Add(novoItem);
         }
-        catch (Exception ex)
-        {
-            await transaction.RollbackAsync();
-            return StatusCode(500, new { erro = "Erro interno ao processar o pedido.", detalhes = ex.Message });
-        }
+
+        // 3. Finaliza o pedido
+        novoPedido.ValorTotal = valorTotal;
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return StatusCode(201, new { mensagem = "Pedido criado e estoque atualizado!", id_pedido = novoPedido.IdPedido });
     }
+    catch (Exception ex)
+    {
+        await transaction.RollbackAsync();
+        return StatusCode(400, new { erro = "Erro ao criar pedido.", detalhes = ex.Message });
+    }
+}
+
+   [HttpDelete("{id}")]
+public async Task<IActionResult> DeletarPedido(int id)
+{
+    // 1. Inicia uma transação para garantir a consistência dos dados
+    using var transaction = await _context.Database.BeginTransactionAsync();
+
+    try
+    {
+        // 2. Busca o pedido incluindo os itens relacionados (Carregamento Adiantado / Eager Loading)
+        var pedido = await _context.Pedidos
+            .Include(p => p.Itens)
+            .FirstOrDefaultAsync(p => p.IdPedido == id);
+
+        if (pedido == null)
+        {
+            return NotFound(new { erro = $"Pedido com ID {id} não encontrado." });
+        }
+
+        // 3. Devolve os itens para o estoque (Produtos)
+        foreach (var item in pedido.Itens)
+        {
+            // Busca o produto correspondente no estoque
+            var produtoNoEstoque = await _context.Produtos
+                .FirstOrDefaultAsync(p => p.IdProduto == item.IdProduto);
+
+            if (produtoNoEstoque != null)
+            {
+                // Soma a quantidade de volta ao estoque geral
+                produtoNoEstoque.QuantidadeEstoque += item.Quantidade;
+                _context.Produtos.Update(produtoNoEstoque);
+            }
+        }
+
+        // 4. Remove os itens primeiro (por conta da restrição de chave estrangeira no banco)
+        _context.Itens.RemoveRange(pedido.Itens);
+
+        // 5. Remove o pedido
+        _context.Pedidos.Remove(pedido);
+
+        // 6. Salva todas as alterações no banco e confirma a transação
+        await _context.SaveChangesAsync();
+        await transaction.CommitAsync();
+
+        return Ok(new { mensagem = $"Pedido {id} deletado com sucesso e produtos devolvidos ao estoque!" });
+    }
+    catch (Exception ex)
+    {
+        // Se der qualquer erro em qualquer etapa, desfaz o estorno e mantém o banco como estava
+        await transaction.RollbackAsync();
+        return StatusCode(500, new { erro = "Erro ao deletar o pedido e estornar o estoque.", detalhes = ex.Message });
+    }
+}
 }

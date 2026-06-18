@@ -31,7 +31,7 @@ namespace DuoBackEnd.Controllers
                 Nome = newUsuario.Nome,
                 Telefone = newUsuario.Telefone,
                 Email = newUsuario.Email,
-                Senha = newUsuario.Senha // Dica futura: aplicar hash aqui depois!
+                Senha = newUsuario.Senha // aplicar hash aqui depois!
             };
 
             await _context.Usuarios.AddAsync(usuario);

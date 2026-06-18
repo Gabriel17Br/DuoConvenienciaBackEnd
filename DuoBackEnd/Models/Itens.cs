@@ -21,4 +21,12 @@ public class Itens
 
     [Column("id_pedido")]
     public int IdPedido { get; set; }
+    [Column("id_produto")]
+    public int IdProduto { get; set; }
+
+    [ForeignKey("IdPedido")]
+    public virtual Pedidos Pedido { get; set; } = null!;
+
+    [ForeignKey("IdProduto")]
+    public virtual Produtos Produto { get; set; } = null!;
 }
